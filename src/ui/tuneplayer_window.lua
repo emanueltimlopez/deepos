@@ -79,11 +79,6 @@ local function createTunePlayerWindow(music_player)
                 love.graphics.rectangle("fill", bar_x + 1, bar_y + 1, (bar_w - 2) * pct, bar_h - 2)
             end
 
-            -- Volume label + bar
-            local vol_y = bar_y + bar_h + 48
-            love.graphics.setColor(Theme.colors.text)
-            love.graphics.print("Vol:", x + 10, vol_y + 2)
-
             local vol_bar_x = x + 50
             local vol_bar_w = ww - 100
             local vol_bar_h = 12
@@ -95,10 +90,6 @@ local function createTunePlayerWindow(music_player)
             local vol_pct = music_player:getVolume()
             love.graphics.setColor(Theme.colors.progress_fill)
             love.graphics.rectangle("fill", vol_bar_x + 1, vol_y + 1, (vol_bar_w - 2) * vol_pct, vol_bar_h - 2)
-
-            -- Volume percentage
-            love.graphics.setColor(Theme.colors.text_disabled)
-            love.graphics.print(math.floor(vol_pct * 100) .. "%", x + ww - 40, vol_y + 2)
 
             -- Separator before playlist
             local sep_y = vol_y + vol_bar_h + 10

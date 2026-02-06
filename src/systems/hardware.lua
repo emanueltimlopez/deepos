@@ -39,7 +39,7 @@ function Hardware:getLevel(component)
 end
 
 function Hardware:getMaxWindows()
-    return 2 + self.levels.ram
+    return 3 + self.levels.ram
 end
 
 function Hardware:getDecryptSpeed()

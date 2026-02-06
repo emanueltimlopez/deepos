@@ -12,7 +12,7 @@ vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords) {
     vec2 uv = texture_coords;
     float vignette = uv.x * uv.y * (1.0 - uv.x) * (1.0 - uv.y);
     vignette = clamp(pow(vignette * 16.0, 0.3), 0.0, 1.0);
-    pixel.rgb *= mix(1.0, vignette, 0.3);
+    pixel.rgb *= mix(1.0, vignette, 0.5);
 
     // Trace flicker (neutral grey, not green)
     if (trace_intensity > 0.5) {

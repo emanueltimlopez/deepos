@@ -104,8 +104,8 @@ function Taskbar:draw()
     love.graphics.line(0, self.y + 1, sw, self.y + 1)
 
     -- Credits (black text)
-    love.graphics.setColor(Theme.colors.text)
-    love.graphics.print("CR: " .. self.economy:getCredits(), 10, self.y + 12)
+    -- love.graphics.setColor(Theme.colors.text)
+    -- love.graphics.print("CR: " .. self.economy:getCredits(), 10, self.y + 12)
 
     -- Trace bar with inset border
     local bar_x, bar_y, bar_w, bar_h = 120, self.y + 12, 100, 16

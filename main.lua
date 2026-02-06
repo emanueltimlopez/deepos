@@ -134,7 +134,7 @@ function GameState.new(sm)
     local self = setmetatable({}, GameState)
     self.sm = sm
     self.window_manager = WindowManager.new()
-    self.economy = Economy.new(500)
+    self.economy = Economy.new(0)
     self.hardware = Hardware.new()
     self.trace = Trace.new()
     self.lead_system = LeadSystem.new()
@@ -216,8 +216,8 @@ function GameState.new(sm)
             id = 0,
             rarity = "standard",
             display_rarity = "standard",
-            reward_min = 100,
-            reward_max = 100,
+            reward_min = 150,
+            reward_max = 150,
             security_level = 1,
             open_cost = 0,
             hex_data = self:generateWelcomeHex(),
