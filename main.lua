@@ -7,6 +7,8 @@ local DesktopIcon = require("src.ui.desktop_icon")
 local DesktopManager = require("src.ui.desktop_manager")
 local NotificationManager = require("src.ui.notification")
 local createInboxWindow = require("src.ui.inbox_window")
+local createNetLedgerWindow = require("src.ui.netledger_window")
+local createTunePlayerWindow = require("src.ui.tuneplayer_window")
 local HexDecrypter = require("src.systems.hex_decrypter")
 local LeadSystem = require("src.systems.lead")
 local Hardware = require("src.systems.hardware")
@@ -15,6 +17,7 @@ local Trace = require("src.systems.trace")
 local Save = require("src.systems.save")
 local AudioManager = require("src.audio.audio_manager")
 local Manual = require("src.systems.manual")
+local MusicPlayer = require("src.systems.music_player")
 
 local state_manager
 local crt_shader
@@ -32,6 +35,8 @@ function MenuState.new(sm)
     self.sm = sm
     self.blink_timer = 0
     self.show_text = true
+    self.title_font = love.graphics.newFont("assets/fonts/PressStart2P.ttf", 28)
+    self.sub_font = love.graphics.newFont("assets/fonts/PressStart2P.ttf", 10)
     return self
 end
 
@@ -54,9 +59,11 @@ function MenuState:draw()
     love.graphics.setColor(Theme.colors.desktop)
     love.graphics.rectangle("fill", 0, 0, sw, sh)
 
+    local font = love.graphics.getFont()
+
     -- Centered Mac-style dialog box
-    local box_w = 360
-    local box_h = 180
+    local box_w = 420
+    local box_h = 200
     local box_x = (sw - box_w) / 2
     local box_y = (sh - box_h) / 2
 
@@ -73,29 +80,34 @@ function MenuState:draw()
     love.graphics.rectangle("line", box_x, box_y, box_w, box_h)
     love.graphics.rectangle("line", box_x + 2, box_y + 2, box_w - 4, box_h - 4)
 
-    -- Title
+    -- Title: "DEEP" in retro pixel font
+    love.graphics.setFont(self.title_font)
     love.graphics.setColor(Theme.colors.text)
-    local font = love.graphics.getFont()
-    local title = "Welcome to Sygnal OS"
-    local tw = font:getWidth(title)
+    local title = "DEEP"
+    local tw = self.title_font:getWidth(title)
     love.graphics.print(title, box_x + (box_w - tw) / 2, box_y + 30)
 
-    -- Subtitle
+    -- "OS" subtitle in smaller retro font
+    love.graphics.setFont(self.sub_font)
     love.graphics.setColor(Theme.colors.text_disabled)
-    local sub = "Shadow Salvage v0.1"
-    local sw2 = font:getWidth(sub)
-    love.graphics.print(sub, box_x + (box_w - sw2) / 2, box_y + 55)
+    local sub = "O P E R A T I N G  S Y S T E M"
+    local stw = self.sub_font:getWidth(sub)
+    love.graphics.print(sub, box_x + (box_w - stw) / 2, box_y + 72)
+
+    -- Restore normal font
+    love.graphics.setFont(font)
 
     -- Divider line
+    local divider_y = box_y + 100
     love.graphics.setColor(Theme.colors.shadow)
-    love.graphics.line(box_x + 20, box_y + 80, box_x + box_w - 20, box_y + 80)
+    love.graphics.line(box_x + 20, divider_y, box_x + box_w - 20, divider_y)
 
     -- Blink prompt
     if self.show_text then
         love.graphics.setColor(Theme.colors.text)
         local prompt = "Press Enter to boot"
         local pw = font:getWidth(prompt)
-        love.graphics.print(prompt, box_x + (box_w - pw) / 2, box_y + 100)
+        love.graphics.print(prompt, box_x + (box_w - pw) / 2, divider_y + 25)
     end
 
     -- Version
@@ -128,15 +140,18 @@ function GameState.new(sm)
     self.lead_system = LeadSystem.new()
     self.audio = AudioManager.new()
     self.manual = Manual.new()
+    self.music_player = MusicPlayer.new()
 
     self.active_decrypters = {} -- lead_id -> HexDecrypter
     self.raid_cooldown = 0
     self.raid_message = nil
     self.crash_message = nil
-    self.crash_cooldown = 0
+    self._alert_ok_rect = nil
     self.shop_open = false
     self.inbox_open = false
     self.manual_open = false
+    self.netledger_open = false
+    self.tuneplayer_open = false
     self.manual_page = 1
     self.next_window_id = 1
 
@@ -168,6 +183,20 @@ function GameState.new(sm)
         function() self:toggleManual() end
     ))
 
+    self.desktop_manager:addIcon(DesktopIcon.new(
+        "netledger",
+        sw - 45, Theme.MENU_BAR_HEIGHT + 320,
+        "Bank",
+        function() self:toggleNetLedger() end
+    ))
+
+    self.desktop_manager:addIcon(DesktopIcon.new(
+        "tuneplayer",
+        sw - 45, Theme.MENU_BAR_HEIGHT + 410,
+        "Music",
+        function() self:toggleTunePlayer() end
+    ))
+
     -- Try loading save
     local save_data = Save.load()
     if save_data then
@@ -178,9 +207,51 @@ function GameState.new(sm)
         if save_data.manual then
             self.manual:deserialize(save_data.manual)
         end
+        if save_data.music_player then
+            self.music_player:deserialize(save_data.music_player)
+        end
+    else
+        -- First boot: add welcome message to inbox
+        local welcome = {
+            id = 0,
+            rarity = "standard",
+            display_rarity = "standard",
+            reward_min = 100,
+            reward_max = 100,
+            security_level = 1,
+            open_cost = 0,
+            hex_data = self:generateWelcomeHex(),
+            real_data = "WELCOME_MSG",
+            data_size = 64,
+            is_virus = false,
+            virus_pattern = nil,
+            snapshot_fidelity = true,
+            hex_preview = "57 45 4C 43 4F 4D 45 21",
+            is_welcome = true,
+        }
+        table.insert(self.lead_system:getAvailableLeads(), 1, welcome)
     end
 
     return self
+end
+
+function GameState:generateWelcomeHex()
+    -- "WELCOME TO DEEP OS - GOOD LUCK OPERATOR" encoded as hex chars
+    local msg = "WELCOME TO DEEP OS - GOOD LUCK OPERATOR"
+    local data = {}
+    for i = 1, 64 do
+        if i <= #msg then
+            local byte = string.byte(msg, i)
+            local hex = string.format("%02X", byte)
+            data[#data + 1] = hex:sub(1, 1)
+            data[#data + 1] = hex:sub(2, 2)
+        end
+    end
+    -- Pad remaining with dots
+    while #data < 64 do
+        data[#data + 1] = "0"
+    end
+    return data
 end
 
 function GameState:enter()
@@ -230,36 +301,87 @@ function GameState:virusCrash()
         table.remove(leads, i)
     end
 
-    -- Credit penalty (20%)
-    local penalty = math.floor(self.economy:getCredits() * 0.2)
-    self.economy:spendCredits(penalty)
+    -- Steal everything, leave 50 CR
+    local stolen = math.max(0, self.economy:getCredits() - 50)
+    self.economy:spendCredits(stolen, "Virus attack")
 
     -- Reset state flags
     self.shop_open = false
     self.inbox_open = false
     self.manual_open = false
+    self.netledger_open = false
+    self.tuneplayer_open = false
 
-    -- Show crash message
-    self.crash_message = string.format("VIRUS EXECUTED! System crash. Lost %d CR, all leads purged.", penalty)
-    self.crash_cooldown = 5.0
+    -- Show crash dialog
+    self.crash_message = string.format("VIRUS EXECUTED! Stole %d CR. Balance: 50 CR.", stolen)
+    self.crash_cooldown = 0 -- stays until dismissed
 
     self:updateInboxBadge()
 end
 
 function GameState:openDecrypterWindow(lead)
+    -- Welcome message: special window
+    if lead.is_welcome then
+        self.lead_system:removeLead(lead.id)
+        self:updateInboxBadge()
+        local win_id = self:getNextWindowId()
+        local win = Window.new(
+            win_id,
+            120, Theme.MENU_BAR_HEIGHT + 60,
+            420, 280,
+            "Message from HQ",
+            function(w, x, y, ww, hh)
+                local font = love.graphics.getFont()
+                local fh = font:getHeight()
+                local lines = {
+                    "Operator,",
+                    "",
+                    "Welcome to DEEP OS.",
+                    "",
+                    "Your job is simple: intercept data",
+                    "leads, decrypt them, extract value.",
+                    "",
+                    "Be careful. Some leads are junk,",
+                    "some carry viruses. Read the Manual.",
+                    "Trust your instincts. Watch the hex.",
+                    "",
+                    "Good luck. You'll need it.",
+                    "",
+                    "- HQ",
+                }
+                love.graphics.setColor(Theme.colors.text)
+                for i, line in ipairs(lines) do
+                    love.graphics.print(line, x + 16, y + 10 + (i - 1) * fh)
+                end
+            end,
+            function(w, dt)
+                w.buttons = {}
+                local btn = Button.new(w.w / 2 - 40, w.h - 34, 80, 24, "OK", function()
+                    self.economy:addCredits(100, "Welcome bonus")
+                    self.notifications:notify("Welcome bonus: +100 CR")
+                    self.window_manager:removeWindow(win_id)
+                end)
+                table.insert(w.buttons, btn)
+            end
+        )
+        self.window_manager:addWindow(win)
+        return
+    end
+
     -- Check max windows
     if self.window_manager:getWindowCount() >= self.hardware:getMaxWindows() then
         self.notifications:notify("Max windows reached - Upgrade RAM")
         return
     end
 
-    -- Remove lead from available
+    -- Remove lead from available (free to open)
     self.lead_system:removeLead(lead.id)
     self:updateInboxBadge()
 
-    -- Create decrypter
+    -- Create decrypter in preview mode (not started)
     local decrypter = HexDecrypter.new(lead)
     local lead_id = lead.id
+    local cost = lead.open_cost or 15
 
     local win_id = self:getNextWindowId()
 
@@ -269,53 +391,72 @@ function GameState:openDecrypterWindow(lead)
         win_id,
         100 + offset, Theme.MENU_BAR_HEIGHT + 30 + offset,
         520, 380,
-        string.format("Hex Decrypt - Lead #%d [%s]", lead.id, lead.rarity:upper()),
+        string.format("Lead #%d [%s]", lead.id, lead.rarity:upper()),
         -- content draw
         function(w, x, y, ww, hh)
             decrypter:draw(x, y, ww, hh)
         end,
         -- content update
         function(w, dt)
-            decrypter:update(dt, self.hardware:getDecryptSpeed())
-
-            -- Check virus execution
-            if decrypter:isVirusExecuted() then
-                self:virusCrash()
-                return
-            end
-
-            -- Manage buttons
             w.buttons = {}
 
-            -- Abort button: visible from start (not just at 40%) for virus defense
-            if not decrypter:isComplete() and not decrypter:isAborted() then
-                local abort_label = decrypter:isVirusRevealed() and "ABORT!" or "Abort"
-                local abort_btn = Button.new(10, w.h - 34, 80, 24, abort_label, function()
-                    decrypter:abort()
-                    if not lead.is_virus then
-                        local refund = math.floor(lead.reward_min * 0.6)
-                        self.economy:addCredits(refund)
-                        self.notifications:notify("Aborted - Refund: " .. refund .. " CR")
-                    else
-                        self.notifications:notify("Virus aborted! System safe.")
+            if not decrypter:isStarted() then
+                -- Preview mode: Process and Delete buttons
+                local process_btn = Button.new(w.w / 2 - 110, w.h - 34, 100, 24,
+                    "Process " .. cost, function()
+                    if not self.economy:canAfford(cost) then
+                        self.notifications:notify("Not enough credits (" .. cost .. " CR)")
+                        return
                     end
-                    self.window_manager:removeWindow(win_id)
-                    self.active_decrypters[lead_id] = nil
+                    self.economy:spendCredits(cost, "Process lead #" .. lead.id)
+                    decrypter:start()
+                    self.active_decrypters[lead_id] = decrypter
+                    w.title = string.format("Hex Decrypt - Lead #%d [%s]", lead.id, lead.rarity:upper())
+                    self.notifications:notify("Processing... paid " .. cost .. " CR")
                 end)
-                table.insert(w.buttons, abort_btn)
-            end
+                table.insert(w.buttons, process_btn)
 
-            if decrypter:isComplete() then
-                local extract_btn = Button.new(10, 0, 100, 28, "Extract", function()
-                    local reward = self.lead_system:calculateReward(lead)
-                    self.economy:addCredits(reward)
-                    self.notifications:notify("Extracted: +" .. reward .. " CR")
+                local delete_btn = Button.new(w.w / 2 + 10, w.h - 34, 100, 24, "Delete", function()
                     self.window_manager:removeWindow(win_id)
-                    self.active_decrypters[lead_id] = nil
                 end)
-                extract_btn.y = w.h - 38
-                extract_btn.x = w.w / 2 - 50
-                table.insert(w.buttons, extract_btn)
+                table.insert(w.buttons, delete_btn)
+            else
+                -- Decrypting mode
+                decrypter:update(dt, self.hardware:getDecryptSpeed())
+
+                -- Check virus execution
+                if decrypter:isVirusExecuted() then
+                    self:virusCrash()
+                    return
+                end
+
+                -- Abort button
+                if not decrypter:isComplete() and not decrypter:isAborted() then
+                    local abort_label = decrypter:isVirusRevealed() and "ABORT!" or "Abort"
+                    local abort_btn = Button.new(10, w.h - 34, 80, 24, abort_label, function()
+                        decrypter:abort()
+                        if not lead.is_virus then
+                            self.notifications:notify("Aborted - decrypt failed")
+                        else
+                            self.notifications:notify("Virus aborted! System safe.")
+                        end
+                        self.window_manager:removeWindow(win_id)
+                        self.active_decrypters[lead_id] = nil
+                    end)
+                    table.insert(w.buttons, abort_btn)
+                end
+
+                -- Extract button
+                if decrypter:isComplete() then
+                    local extract_btn = Button.new(w.w / 2 - 50, w.h - 38, 100, 28, "Extract", function()
+                        local reward = self.lead_system:calculateReward(lead)
+                        self.economy:addCredits(reward, "Extract lead #" .. lead.id)
+                        self.notifications:notify("Extracted: +" .. reward .. " CR")
+                        self.window_manager:removeWindow(win_id)
+                        self.active_decrypters[lead_id] = nil
+                    end)
+                    table.insert(w.buttons, extract_btn)
+                end
             end
         end
     )
@@ -324,7 +465,6 @@ function GameState:openDecrypterWindow(lead)
     win.data.lead_rarity = lead.rarity
 
     self.window_manager:addWindow(win)
-    self.active_decrypters[lead_id] = decrypter
 end
 
 function GameState:toggleInbox()
@@ -360,8 +500,8 @@ function GameState:toggleShop()
     local win = Window.new(
         "shop",
         sw / 2 - 200, Theme.MENU_BAR_HEIGHT + 40,
-        400, 420,
-        "Hardware Shop",
+        500, 420,
+        "Online Shop",
         -- draw
         function(w, x, y, ww, hh)
             love.graphics.setColor(Theme.colors.text)
@@ -465,7 +605,7 @@ function GameState:toggleManual()
     local win = Window.new(
         "manual",
         180, Theme.MENU_BAR_HEIGHT + 60,
-        380, 400,
+        380, 600,
         "Manual.txt",
         -- draw
         function(w, x, y, ww, hh)
@@ -527,6 +667,30 @@ function GameState:toggleManual()
     self.window_manager:addWindow(win)
 end
 
+function GameState:toggleNetLedger()
+    if self.netledger_open then
+        self.window_manager:removeWindow("netledger")
+        self.netledger_open = false
+        return
+    end
+
+    self.netledger_open = true
+    local win = createNetLedgerWindow(self.economy)
+    self.window_manager:addWindow(win)
+end
+
+function GameState:toggleTunePlayer()
+    if self.tuneplayer_open then
+        self.window_manager:removeWindow("tuneplayer")
+        self.tuneplayer_open = false
+        return
+    end
+
+    self.tuneplayer_open = true
+    local win = createTunePlayerWindow(self.music_player)
+    self.window_manager:addWindow(win)
+end
+
 function GameState:countJackpotWindows()
     local count = 0
     for _, win in ipairs(self.window_manager.windows) do
@@ -541,7 +705,8 @@ function GameState:closeRandomDecrypterWindow()
     -- Collect decrypter windows (not shop/inbox/manual)
     local decrypter_wins = {}
     for _, win in ipairs(self.window_manager.windows) do
-        if win.id ~= "shop" and win.id ~= "inbox" and win.id ~= "manual" then
+        if win.id ~= "shop" and win.id ~= "inbox" and win.id ~= "manual"
+           and win.id ~= "netledger" and win.id ~= "tuneplayer" then
             table.insert(decrypter_wins, win)
         end
     end
@@ -571,6 +736,8 @@ function GameState:update(dt)
     if self.shop_open then active_count = active_count - 1 end
     if self.inbox_open then active_count = active_count - 1 end
     if self.manual_open then active_count = active_count - 1 end
+    if self.netledger_open then active_count = active_count - 1 end
+    if self.tuneplayer_open then active_count = active_count - 1 end
     active_count = math.max(0, active_count)
 
     local jackpot_count = self:countJackpotWindows()
@@ -594,7 +761,8 @@ function GameState:update(dt)
         -- Close all decrypter windows
         local to_remove = {}
         for _, win in ipairs(self.window_manager.windows) do
-            if win.id ~= "shop" and win.id ~= "inbox" and win.id ~= "manual" then
+            if win.id ~= "shop" and win.id ~= "inbox" and win.id ~= "manual"
+               and win.id ~= "netledger" and win.id ~= "tuneplayer" then
                 table.insert(to_remove, win.id)
             end
         end
@@ -611,13 +779,10 @@ function GameState:update(dt)
         end
     end
 
-    -- Virus crash cooldown
-    if self.crash_cooldown > 0 then
-        self.crash_cooldown = self.crash_cooldown - dt
-        if self.crash_cooldown <= 0 then
-            self.crash_message = nil
-        end
-    end
+    -- Virus crash stays until dismissed via OK button
+
+    -- Music player (auto-advance tracks)
+    self.music_player:update(dt)
 
     -- Desktop icons + notifications
     self.desktop_manager:update(dt)
@@ -647,9 +812,9 @@ function GameState:draw()
         self:drawAlertOverlay(sw, sh, "!", self.raid_message, "System will recover shortly...")
     end
 
-    -- Virus crash overlay
+    -- Virus crash overlay (with OK button)
     if self.crash_message then
-        self:drawAlertOverlay(sw, sh, "X", self.crash_message, "Read Manual.txt to learn virus signatures.")
+        self:drawAlertOverlay(sw, sh, "X", self.crash_message, "Read Manual.txt to learn virus signatures.", true)
     end
 
     -- Trace flicker effect
@@ -663,14 +828,14 @@ function GameState:draw()
     self.notifications:draw()
 end
 
-function GameState:drawAlertOverlay(sw, sh, icon, message, subtitle)
+function GameState:drawAlertOverlay(sw, sh, icon, message, subtitle, show_ok)
     -- Dim background
-    love.graphics.setColor(0.0, 0.0, 0.0, 0.2)
+    love.graphics.setColor(0.0, 0.0, 0.0, 0.4)
     love.graphics.rectangle("fill", 0, 0, sw, sh)
 
     -- Alert dialog box
-    local box_w = 380
-    local box_h = 100
+    local box_w = 400
+    local box_h = show_ok and 130 or 100
     local box_x = (sw - box_w) / 2
     local box_y = (sh - box_h) / 2
 
@@ -696,6 +861,23 @@ function GameState:drawAlertOverlay(sw, sh, icon, message, subtitle)
 
     love.graphics.setColor(Theme.colors.text_disabled)
     love.graphics.print(subtitle, box_x + 45, box_y + 45)
+
+    -- OK button
+    if show_ok then
+        local btn_w, btn_h = 80, 24
+        local btn_x = box_x + (box_w - btn_w) / 2
+        local btn_y = box_y + box_h - btn_h - 12
+        self._alert_ok_rect = { x = btn_x, y = btn_y, w = btn_w, h = btn_h }
+
+        local mx, my = love.mouse.getPosition()
+        local hover = mx >= btn_x and mx <= btn_x + btn_w and my >= btn_y and my <= btn_y + btn_h
+        Theme.drawBeveledRect(btn_x, btn_y, btn_w, btn_h,
+            hover and Theme.colors.button_hover or Theme.colors.button_face)
+        love.graphics.setColor(Theme.colors.text)
+        local font = love.graphics.getFont()
+        local tw = font:getWidth("OK")
+        love.graphics.print("OK", btn_x + (btn_w - tw) / 2, btn_y + 5)
+    end
 end
 
 function GameState:keypressed(key)
@@ -711,6 +893,14 @@ function GameState:keypressed(key)
         self:toggleManual()
     end
 
+    if key == "b" and love.keyboard.isDown("lctrl", "rctrl", "lgui", "rgui") then
+        self:toggleNetLedger()
+    end
+
+    if key == "p" and love.keyboard.isDown("lctrl", "rctrl", "lgui", "rgui") then
+        self:toggleTunePlayer()
+    end
+
     if key == "f5" then
         Save.save({
             economy = self.economy,
@@ -718,12 +908,23 @@ function GameState:keypressed(key)
             trace = self.trace,
             lead_system = self.lead_system,
             manual = self.manual,
+            music_player = self.music_player,
         })
         self.notifications:notify("Game saved")
     end
 end
 
 function GameState:mousepressed(x, y, button)
+    -- Crash dialog blocks everything until OK clicked
+    if self.crash_message then
+        local r = self._alert_ok_rect
+        if r and x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h then
+            self.crash_message = nil
+            self._alert_ok_rect = nil
+        end
+        return
+    end
+
     -- Ignore clicks on menu bar
     if y <= Theme.MENU_BAR_HEIGHT then
         return
@@ -740,6 +941,12 @@ function GameState:mousepressed(x, y, button)
         end
         if self.manual_open and not self.window_manager:getWindow("manual") then
             self.manual_open = false
+        end
+        if self.netledger_open and not self.window_manager:getWindow("netledger") then
+            self.netledger_open = false
+        end
+        if self.tuneplayer_open and not self.window_manager:getWindow("tuneplayer") then
+            self.tuneplayer_open = false
         end
         return
     end

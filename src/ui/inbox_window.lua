@@ -48,16 +48,8 @@ local function createInboxWindow(lead_system, hardware, on_lead_click, on_trash)
                 return
             end
 
-            -- Header
-            love.graphics.setColor(Theme.colors.text)
-            love.graphics.print(string.format("%d lead(s) available", #leads), x + 10, y + 8)
-
-            -- Separator
-            love.graphics.setColor(Theme.colors.shadow)
-            love.graphics.line(x + 10, y + 26, x + ww - 10, y + 26)
-
             -- Lead entries (up to 10)
-            local ly = 32
+            local ly = 12
             local entry_h = 32
             local max_display = 10
             for i, lead in ipairs(leads) do
@@ -86,14 +78,16 @@ local function createInboxWindow(lead_system, hardware, on_lead_click, on_trash)
                 love.graphics.setColor(Theme.colors.text_disabled)
                 love.graphics.print("[" .. tag .. "]", x + 22, ey + 4)
 
-                -- Lead info
+                -- Lead info: cost always visible, reward gated
+                local open_cost = lead.open_cost or 15
                 love.graphics.setColor(Theme.colors.text)
                 if has_value then
-                    local info = string.format("#%d  %d-%d CR",
-                        lead.id, lead.reward_min, lead.reward_max)
+                    local info = string.format("#%d  Cost:%d  Reward:%d-%d",
+                        lead.id, open_cost, lead.reward_min, lead.reward_max)
                     love.graphics.print(info, x + 48, ey + 4)
                 else
-                    local info = string.format("#%d  ??? CR", lead.id)
+                    local info = string.format("#%d  Cost:%d  Reward:???",
+                        lead.id, open_cost)
                     love.graphics.print(info, x + 48, ey + 4)
                 end
 
@@ -109,7 +103,7 @@ local function createInboxWindow(lead_system, hardware, on_lead_click, on_trash)
         function(w, dt)
             w.buttons = {}
             local leads = lead_system:getAvailableLeads()
-            local ly = 32
+            local ly = 16
             local entry_h = 32
             local max_display = 10
 

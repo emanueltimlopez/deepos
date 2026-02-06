@@ -2,18 +2,18 @@ local Hardware = {}
 Hardware.__index = Hardware
 
 local COMPONENTS = {
-    ram  = { base_cost = 200,  label = "RAM" },
-    gpu  = { base_cost = 300,  label = "GPU" },
-    ssd  = { base_cost = 150,  label = "SSD" },
-    cpu  = { base_cost = 250,  label = "CPU" },
+    ram  = { base_cost = 2000,  label = "RAM" },
+    gpu  = { base_cost = 3000,  label = "GPU" },
+    ssd  = { base_cost = 1500,  label = "SSD" },
+    cpu  = { base_cost = 2500,  label = "CPU" },
 }
 
 local SOFTWARE = {
-    manual_v2      = { cost = 500,  label = "Manual v2",      description = "Advanced patterns" },
-    manual_v3      = { cost = 1500, label = "Manual v3",      description = "Expert signatures" },
-    threat_scanner = { cost = 300,  label = "Threat Scanner",  description = "Inbox danger indicator" },
-    value_estimator = { cost = 800, label = "Value Estimator", description = "Inbox credit range" },
-    ocr_scanner    = { cost = 3000, label = "OCR Scanner",     description = "Auto-highlight patterns" },
+    manual_v2      = { cost = 5000,  label = "Manual v2",      description = "Advanced patterns" },
+    manual_v3      = { cost = 15000, label = "Manual v3",      description = "Expert signatures" },
+    threat_scanner = { cost = 30000,  label = "Threat Scanner",  description = "Inbox danger indicator" },
+    value_estimator = { cost = 8000, label = "Value Estimator", description = "Inbox credit range" },
+    ocr_scanner    = { cost = 30000, label = "OCR Scanner",     description = "Auto-highlight patterns" },
 }
 
 function Hardware.new()
@@ -63,7 +63,9 @@ end
 function Hardware:upgrade(component, economy)
     local cost = self:getUpgradeCost(component)
     if economy:canAfford(cost) then
-        economy:spendCredits(cost)
+        local info = COMPONENTS[component]
+        local label = info and info.label or component:upper()
+        economy:spendCredits(cost, "Upgrade " .. label .. " Lv." .. (self.levels[component] + 1))
         self.levels[component] = self.levels[component] + 1
         return true
     end
@@ -79,7 +81,7 @@ function Hardware:buySoftware(name, economy)
     if not info then return false end
     if self.software[name] then return false end -- already owned
     if not economy:canAfford(info.cost) then return false end
-    economy:spendCredits(info.cost)
+    economy:spendCredits(info.cost, "Buy " .. info.label)
     self.software[name] = true
     return true
 end

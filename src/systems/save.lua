@@ -11,6 +11,7 @@ function Save.save(game_state)
         trace = game_state.trace:serialize(),
         leads = game_state.lead_system:serialize(),
         manual = game_state.manual and game_state.manual:serialize() or nil,
+        music_player = game_state.music_player and game_state.music_player:serialize() or nil,
     }
     local encoded = json.encode(data)
     local success, err = love.filesystem.write(SAVE_FILE, encoded)

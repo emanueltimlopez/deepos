@@ -4,10 +4,10 @@ Lead.__index = Lead
 local next_id = 1
 
 local RARITY_TABLE = {
-    { rarity = "basura",   weight = 60, reward_min = 20,   reward_max = 80,   data_size = 64,  security = 1 },
-    { rarity = "standard", weight = 30, reward_min = 100,  reward_max = 300,  data_size = 128, security = 2 },
-    { rarity = "rare",     weight = 8,  reward_min = 400,  reward_max = 800,  data_size = 256, security = 3 },
-    { rarity = "jackpot",  weight = 2,  reward_min = 1000, reward_max = 3000, data_size = 512, security = 4 },
+    { rarity = "trash",   weight = 60, reward_min = 20,   reward_max = 80,   data_size = 64,  security = 1, open_cost = 15 },
+    { rarity = "standard", weight = 30, reward_min = 100,  reward_max = 300,  data_size = 128, security = 2, open_cost = 50 },
+    { rarity = "rare",     weight = 8,  reward_min = 400,  reward_max = 800,  data_size = 256, security = 3, open_cost = 100 },
+    { rarity = "jackpot",  weight = 2,  reward_min = 1000, reward_max = 3000, data_size = 512, security = 4, open_cost = 200 },
 }
 
 local HEX_CHARS = "0123456789ABCDEF"
@@ -16,7 +16,7 @@ local VIRUS_PATTERNS = { "TROJAN.V3", "WORM.X1", "ROOTKIT", "MALWARE.Z", "SPYWAR
 
 -- Virus chance per rarity
 local VIRUS_CHANCE = {
-    basura = 0.10,
+    trash = 0.10,
     standard = 0.05,
     rare = 0,
     jackpot = 0,
@@ -95,12 +95,12 @@ function Lead:generateLead()
     local display_rarity = rarity_info.rarity
     if not snapshot_fidelity then
         -- Good lead looks bad, or bad lead looks good
-        if rarity_info.rarity == "basura" or rarity_info.rarity == "standard" then
+        if rarity_info.rarity == "trash" or rarity_info.rarity == "standard" then
             -- Make it look better than it is
             display_rarity = math.random() < 0.5 and "rare" or "standard"
         else
             -- Make it look worse than it is
-            display_rarity = math.random() < 0.5 and "basura" or "standard"
+            display_rarity = math.random() < 0.5 and "trash" or "standard"
         end
         hex_data = self:generateHexData(rarity_info.data_size, display_rarity)
     end
@@ -121,6 +121,7 @@ function Lead:generateLead()
         reward_min = rarity_info.reward_min,
         reward_max = rarity_info.reward_max,
         security_level = rarity_info.security,
+        open_cost = rarity_info.open_cost,
         hex_data = hex_data,
         real_data = self:generateRealData(rarity_info.rarity),
         data_size = rarity_info.data_size,
@@ -136,7 +137,7 @@ end
 function Lead:generateHexData(size, rarity)
     local data = {}
 
-    if rarity == "basura" then
+    if rarity == "trash" then
         -- Repetitive blocks, dead sectors: lots of 00 and FF
         local patterns = {"0", "0", "F", "F", "0", "0", "F", "F", "0", "0"}
         for i = 1, size do
@@ -194,7 +195,7 @@ end
 
 function Lead:generateRealData(rarity)
     local snippets = {
-        basura = {
+        trash = {
             "EMPTY_PACKET", "NULL_SIGNAL", "JUNK_DATA", "CORRUPTED",
             "NO_VALUE", "DEAD_END", "GARBAGE_0x0",
         },
@@ -210,7 +211,7 @@ function Lead:generateRealData(rarity)
             "GENESIS_BLOCK", "CORE_DECRYPT", "OMEGA_SIGNAL", "DEEP_ARCHIVE",
         },
     }
-    local pool = snippets[rarity] or snippets.basura
+    local pool = snippets[rarity] or snippets.trash
     return pool[math.random(#pool)]
 end
 

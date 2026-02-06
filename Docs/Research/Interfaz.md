@@ -20,7 +20,11 @@ VoidMarket (The Mall): Tienda de mejoras.
 
 Hex-Decrypter (Bit-Salvage): Herramienta de trabajo.
 
-Manual.txt (Pattern_DB): NUEVO. Icono de un documento de texto con unas gafas encima.
+Manual.txt (Pattern_DB): Base de conocimiento.
+
+NetLedger (Banking): NUEVO. Icono de una calculadora sobre una hoja de cálculo.
+
+TunePlayer (Music): NUEVO. Icono de una nota musical doble (corcheas) o un pequeño CD.
 
 Trash (Papelera): Para descartar leads.
 
@@ -60,7 +64,49 @@ Visuales: Fondo blanco, texto monospaced en negro.
 
 Progresión: Los caracteres se limpian. El jugador debe estar atento a si aparecen patrones listados en el manual como "Peligrosos" para abortar.
 
-6. Flujo de Navegación "Classic Mac"
+6. Aplicación: NetLedger (Banking - Read Only)
+
+Herramienta de gestión financiera personal, estilo Quicken de los 90.
+
+Interfaz:
+
+Encabezado: Muestra el "Current Balance" (Saldo Actual) en fuente grande y negrita (Chicago).
+
+Tabla de Transacciones: Una hoja de cálculo simple con columnas:
+
+Date: Fecha ficticia del sistema.
+
+Description: Origen (ej: "Payout: Asset #44", "Purchase: RAM 8MB").
+
+Amount: Valor en verde (+) o rojo (-).
+
+Status: "Cleared" o "Pending" (solo decorativo).
+
+Funcionalidad:
+
+Es estrictamente Read-Only. No se pueden hacer transferencias.
+
+Sirve para que el jugador vea su historial de progreso y cuánto ha gastado en upgrades vs cuánto ha ganado en trabajos.
+
+7. Aplicación: TunePlayer (Music)
+
+Reproductor de medios minimalista, estilo CD Player de Windows 95 o AppleCD Audio Player.
+
+Interfaz:
+
+Controles: Botones con relieve 3D marcados (Play, Stop, Prev, Next). Un slider horizontal para el volumen.
+
+Display LCD: Un pequeño recuadro negro con letras verdes (o LCD gris) que muestra:
+
+TRACK 01: 00:45 (Tiempo transcurrido).
+
+Title: Nombre de la pista (ej: "Silicon Dreams.mod", "Heuristic Vibe.mid").
+
+Playlist: Una lista pequeña debajo de los controles donde se pueden seleccionar diferentes melodías en estilo 8-bit / Chiptune relajante (Lo-Fi).
+
+Comportamiento: La música persiste aunque se cierre la ventana (la app queda corriendo en "segundo plano" o minimizada).
+
+8. Flujo de Navegación "Classic Mac"
 
 Notificación: Suena un "Eep!". Icono del Mail parpadea.
 

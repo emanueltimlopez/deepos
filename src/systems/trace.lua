@@ -59,7 +59,7 @@ end
 
 function Trace:onRaid(economy, hardware)
     local penalty = math.floor(economy:getCredits() * 0.3)
-    economy:spendCredits(penalty)
+    economy:spendCredits(penalty, "System breach penalty")
     local damaged = hardware:damageRandom()
     self.level = 0.2
     self.raid_triggered = true

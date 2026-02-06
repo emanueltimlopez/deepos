@@ -13,6 +13,7 @@ function HexDecrypter.new(lead)
     self.buffer = {}
     self.complete = false
     self.aborted = false
+    self.started = false
 
     -- Virus state
     self.virus_revealed = false
@@ -20,15 +21,29 @@ function HexDecrypter.new(lead)
     self.virus_reveal_threshold = 0.25 + math.random() * 0.10 -- 25-35%
     self.virus_execute_threshold = 0.60
 
-    -- Initialize buffer with noise
+    -- Initialize buffer with the lead's raw hex data (static preview)
     for i = 1, lead.data_size do
-        self.buffer[i] = HEX_CHARS:sub(math.random(16), math.random(16))
+        self.buffer[i] = lead.hex_data[i]
     end
 
     return self
 end
 
+function HexDecrypter:start()
+    self.started = true
+    -- Scramble buffer to noise now that decryption begins
+    for i = 1, self.lead.data_size do
+        local idx = math.random(16)
+        self.buffer[i] = HEX_CHARS:sub(idx, idx)
+    end
+end
+
+function HexDecrypter:isStarted()
+    return self.started
+end
+
 function HexDecrypter:update(dt, gpu_speed)
+    if not self.started then return end
     if self.complete or self.aborted or self.virus_executed then return end
 
     local rate = 0.08 * gpu_speed / self.lead.security_level
@@ -121,10 +136,17 @@ function HexDecrypter:draw(x, y, w, h)
     local line_h = font:getHeight() + 2
     local padding = 8
 
-    -- Header (black text on white window background)
+    -- Header
     love.graphics.setColor(Theme.colors.text)
-    love.graphics.print(string.format("Decrypting: %s [%s]", self.lead.real_data, self.lead.rarity:upper()),
-        x + padding, y + padding)
+    if self.started then
+        love.graphics.print(string.format("Decrypting: %s [%s]", self.lead.real_data, self.lead.rarity:upper()),
+            x + padding, y + padding)
+    else
+        local cost = self.lead.open_cost or 15
+        love.graphics.print(string.format("Lead #%d  [Sec:%d]  Cost: %d CR",
+            self.lead.id, self.lead.security_level, cost),
+            x + padding, y + padding)
+    end
 
     -- Virus warning
     if self.virus_revealed and not self.virus_executed then
@@ -133,29 +155,35 @@ function HexDecrypter:draw(x, y, w, h)
             x + padding, y + padding + line_h)
     end
 
-    -- Progress bar with inset border
+    -- Progress bar (only when decrypting)
     local bar_y = y + padding + line_h * 2 + 4
     local bar_w = w - padding * 2
     local bar_h = 14
 
-    -- White background for bar
-    love.graphics.setColor(Theme.colors.progress_bg)
-    love.graphics.rectangle("fill", x + padding, bar_y, bar_w, bar_h)
+    if self.started then
+        -- White background for bar
+        love.graphics.setColor(Theme.colors.progress_bg)
+        love.graphics.rectangle("fill", x + padding, bar_y, bar_w, bar_h)
 
-    -- Inset border
-    Theme.drawInsetRect(x + padding, bar_y, bar_w, bar_h)
+        -- Inset border
+        Theme.drawInsetRect(x + padding, bar_y, bar_w, bar_h)
 
-    -- Fill color: red if virus revealed, blue otherwise
-    if self.virus_revealed then
-        love.graphics.setColor(0.8, 0.1, 0.1, 1.0)
+        -- Fill color: red if virus revealed, blue otherwise
+        if self.virus_revealed then
+            love.graphics.setColor(0.8, 0.1, 0.1, 1.0)
+        else
+            love.graphics.setColor(Theme.colors.progress_fill)
+        end
+        love.graphics.rectangle("fill", x + padding + 1, bar_y + 1, (bar_w - 2) * self.progress, bar_h - 2)
+
+        -- Percentage text
+        love.graphics.setColor(Theme.colors.text)
+        love.graphics.print(string.format("%.0f%%", self.progress * 100), x + w - 50, bar_y)
     else
-        love.graphics.setColor(Theme.colors.progress_fill)
+        -- Preview mode label
+        love.graphics.setColor(Theme.colors.text_disabled)
+        love.graphics.print("-- PREVIEW -- inspect hex data before processing", x + padding, bar_y)
     end
-    love.graphics.rectangle("fill", x + padding + 1, bar_y + 1, (bar_w - 2) * self.progress, bar_h - 2)
-
-    -- Percentage text
-    love.graphics.setColor(Theme.colors.text)
-    love.graphics.print(string.format("%.0f%%", self.progress * 100), x + w - 50, bar_y)
 
     -- Hex grid
     local grid_y = bar_y + 22
@@ -169,26 +197,31 @@ function HexDecrypter:draw(x, y, w, h)
 
         if cy > y + h - line_h then break end
 
-        -- Color based on reveal state
-        local revealed = self.progress >= (i / self.lead.data_size)
-
-        -- Highlight virus pattern chars in red
-        if self.virus_revealed and self.lead.virus_pattern then
-            local pattern_start = math.max(1, math.floor(self.lead.data_size * 0.2))
-            local pattern_end = pattern_start + #self.lead.virus_pattern - 1
-            if i >= pattern_start and i <= pattern_end then
-                love.graphics.setColor(0.9, 0.0, 0.0, 1.0)
-                love.graphics.print(self.buffer[i] or ".", cx, cy)
-                goto continue
-            end
-        end
-
-        if revealed then
+        if not self.started then
+            -- Preview: all chars visible, static
             love.graphics.setColor(0.0, 0.0, 0.0, 1.0)
-        elseif self.progress > (i / self.lead.data_size) * 0.4 then
-            love.graphics.setColor(0.4, 0.4, 0.4, 0.8)
         else
-            love.graphics.setColor(0.7, 0.7, 0.7, 0.5)
+            -- Color based on reveal state
+            local revealed = self.progress >= (i / self.lead.data_size)
+
+            -- Highlight virus pattern chars in red
+            if self.virus_revealed and self.lead.virus_pattern then
+                local pattern_start = math.max(1, math.floor(self.lead.data_size * 0.2))
+                local pattern_end = pattern_start + #self.lead.virus_pattern - 1
+                if i >= pattern_start and i <= pattern_end then
+                    love.graphics.setColor(0.9, 0.0, 0.0, 1.0)
+                    love.graphics.print(self.buffer[i] or ".", cx, cy)
+                    goto continue
+                end
+            end
+
+            if revealed then
+                love.graphics.setColor(0.0, 0.0, 0.0, 1.0)
+            elseif self.progress > (i / self.lead.data_size) * 0.4 then
+                love.graphics.setColor(0.4, 0.4, 0.4, 0.8)
+            else
+                love.graphics.setColor(0.7, 0.7, 0.7, 0.5)
+            end
         end
 
         love.graphics.print(self.buffer[i] or ".", cx, cy)

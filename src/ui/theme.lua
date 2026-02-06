@@ -172,11 +172,6 @@ function Theme.drawMenuBar(sw, economy, trace)
     local font = love.graphics.getFont()
     love.graphics.print("@", 8, 3)
 
-    -- Decorative menu items
-    love.graphics.print("File", 30, 3)
-    love.graphics.print("Edit", 70, 3)
-    love.graphics.print("View", 110, 3)
-    love.graphics.print("Special", 155, 3)
 
     -- Right side: Credits → Trace → Clock
     local rx = sw - 10
@@ -189,23 +184,23 @@ function Theme.drawMenuBar(sw, economy, trace)
     love.graphics.print(clock, rx, 3)
 
     -- Trace mini-bar
-    rx = rx - 65
-    local bar_x, bar_y, bar_w, bar_h = rx, 5, 50, 10
-    love.graphics.setColor(Theme.colors.progress_bg)
-    love.graphics.rectangle("fill", bar_x, bar_y, bar_w, bar_h)
-    Theme.drawInsetRect(bar_x, bar_y, bar_w, bar_h)
+    -- rx = rx - 65
+    -- local bar_x, bar_y, bar_w, bar_h = rx, 5, 50, 10
+    -- love.graphics.setColor(Theme.colors.progress_bg)
+    -- love.graphics.rectangle("fill", bar_x, bar_y, bar_w, bar_h)
+    -- Theme.drawInsetRect(bar_x, bar_y, bar_w, bar_h)
 
-    if trace then
-        local trace_pct = trace:getLevel()
-        local tr = trace_pct > 0.7 and 0.8 or trace_pct > 0.4 and 0.6 or 0.3
-        love.graphics.setColor(tr, 0.1, 0.1, 1)
-        love.graphics.rectangle("fill", bar_x + 1, bar_y + 1, (bar_w - 2) * trace_pct, bar_h - 2)
-    end
+    -- if trace then
+    --     local trace_pct = trace:getLevel()
+    --     local tr = trace_pct > 0.7 and 0.8 or trace_pct > 0.4 and 0.6 or 0.3
+    --     love.graphics.setColor(tr, 0.1, 0.1, 1)
+    --     love.graphics.rectangle("fill", bar_x + 1, bar_y + 1, (bar_w - 2) * trace_pct, bar_h - 2)
+    -- end
 
     -- "T:" label before trace bar
-    rx = rx - 16
-    love.graphics.setColor(Theme.colors.text)
-    love.graphics.print("T:", rx, 3)
+    -- rx = rx - 16
+    -- love.graphics.setColor(Theme.colors.text)
+    -- love.graphics.print("T:", rx, 3)
 
     -- Credits
     if economy then
