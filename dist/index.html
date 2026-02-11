@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en-us">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Deep OS</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            color: #fff;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        #canvas {
+            display: block;
+        }
+
+        /* Optional: Style the spinner from love.js style.css if needed, 
+         or include the original css link. */
+    </style>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+
+    <script>
+        // Auto-load game.love if no game specified in URL
+        // This is a helper for the love.js player which looks for ?g=...
+        if (window.location.search.indexOf('g=') === -1) {
+            var currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set('g', 'game_web.love');
+            currentUrl.searchParams.set('v', '11.5');
+            currentUrl.searchParams.set('t', Date.now());
+            window.history.replaceState({ path: currentUrl.href }, '', currentUrl.href);
+        }
+    </script>
+    <script src="player.js"></script>
+</body>
+
+</html>

@@ -197,35 +197,36 @@ function HexDecrypter:draw(x, y, w, h)
 
         if cy > y + h - line_h then break end
 
-        if not self.started then
-            -- Preview: all chars visible, static
-            love.graphics.setColor(0.0, 0.0, 0.0, 1.0)
-        else
-            -- Color based on reveal state
-            local revealed = self.progress >= (i / self.lead.data_size)
-
-            -- Highlight virus pattern chars in red
-            if self.virus_revealed and self.lead.virus_pattern then
-                local pattern_start = math.max(1, math.floor(self.lead.data_size * 0.2))
-                local pattern_end = pattern_start + #self.lead.virus_pattern - 1
-                if i >= pattern_start and i <= pattern_end then
-                    love.graphics.setColor(0.9, 0.0, 0.0, 1.0)
-                    love.graphics.print(self.buffer[i] or ".", cx, cy)
-                    goto continue
-                end
-            end
-
-            if revealed then
-                love.graphics.setColor(0.0, 0.0, 0.0, 1.0)
-            elseif self.progress > (i / self.lead.data_size) * 0.4 then
-                love.graphics.setColor(0.4, 0.4, 0.4, 0.8)
-            else
-                love.graphics.setColor(0.7, 0.7, 0.7, 0.5)
+        local is_virus_char = false
+        if self.virus_revealed and self.lead.virus_pattern then
+            local pattern_start = math.max(1, math.floor(self.lead.data_size * 0.2))
+            local pattern_end = pattern_start + #self.lead.virus_pattern - 1
+            if i >= pattern_start and i <= pattern_end then
+                is_virus_char = true
             end
         end
 
-        love.graphics.print(self.buffer[i] or ".", cx, cy)
-        ::continue::
+        if is_virus_char then
+            love.graphics.setColor(0.9, 0.0, 0.0, 1.0)
+            love.graphics.print(self.buffer[i] or ".", cx, cy)
+        else
+            if not self.started then
+                -- Preview: all chars visible, static
+                love.graphics.setColor(0.0, 0.0, 0.0, 1.0)
+            else
+                -- Color based on reveal state
+                local revealed = self.progress >= (i / self.lead.data_size)
+
+                if revealed then
+                    love.graphics.setColor(0.0, 0.0, 0.0, 1.0)
+                elseif self.progress > (i / self.lead.data_size) * 0.4 then
+                    love.graphics.setColor(0.4, 0.4, 0.4, 0.8)
+                else
+                    love.graphics.setColor(0.7, 0.7, 0.7, 0.5)
+                end
+            end
+            love.graphics.print(self.buffer[i] or ".", cx, cy)
+        end
     end
 
     -- ASCII sidebar

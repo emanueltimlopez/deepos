@@ -82,6 +82,7 @@ local function createTunePlayerWindow(music_player)
             local vol_bar_x = x + 50
             local vol_bar_w = ww - 100
             local vol_bar_h = 12
+            local vol_y = bar_y + bar_h + 48
 
             love.graphics.setColor(Theme.colors.progress_bg)
             love.graphics.rectangle("fill", vol_bar_x, vol_y, vol_bar_w, vol_bar_h)

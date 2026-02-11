@@ -85,20 +85,27 @@ local function createInboxWindow(lead_system, hardware, on_lead_click, on_trash)
                     local info = string.format("#%d  Cost:%d  Reward:%d-%d",
                         lead.id, open_cost, lead.reward_min, lead.reward_max)
                     love.graphics.print(info, x + 48, ey + 4)
+                elseif lead.is_welcome then
+                    local info = string.format("Welcome to DEEP!")
+                    love.graphics.print(info, x + 48, ey + 4)
                 else
                     local info = string.format("#%d  Cost:%d  Reward:???",
                         lead.id, open_cost)
                     love.graphics.print(info, x + 48, ey + 4)
                 end
-
-                -- Hex preview (smaller, below the info line)
-                love.graphics.setColor(Theme.colors.text_disabled)
-                local preview = lead.hex_preview or "??"
-                love.graphics.print(preview, x + 48, ey + 18)
+                
+                if lead.is_welcome then
+                else
+                    -- Hex preview (smaller, below the info line)
+                    love.graphics.setColor(Theme.colors.text_disabled)
+                    local preview = lead.hex_preview or "??"
+                    love.graphics.print(preview, x + 48, ey + 18)
+                end
 
                 ly = ly + entry_h
             end
         end,
+
         -- content update
         function(w, dt)
             w.buttons = {}
@@ -121,14 +128,17 @@ local function createInboxWindow(lead_system, hardware, on_lead_click, on_trash)
                 end)
                 table.insert(w.buttons, open_btn)
 
-                -- Trash button
-                local trash_btn = Button.new(w.w - 64, ly, 50, entry_h - 6, "Trash", function()
-                    lead_system:trashLead(lead_ref.id)
-                    if on_trash then
-                        on_trash(lead_ref)
-                    end
-                end)
-                table.insert(w.buttons, trash_btn)
+                if lead.is_welcome then
+                else
+                    -- Trash button
+                    local trash_btn = Button.new(w.w - 64, ly, 50, entry_h - 6, "Trash", function()
+                        lead_system:trashLead(lead_ref.id)
+                        if on_trash then
+                            on_trash(lead_ref)
+                        end
+                    end)
+                    table.insert(w.buttons, trash_btn)
+                end
 
                 ly = ly + entry_h
             end
