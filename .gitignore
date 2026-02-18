@@ -1,0 +1,32 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build outputs
+dist/
+itch_build.zip
+*.love
+
+# Love.js temp clone
+love.js_temp/
+
+# Logs
+*.log
+
+# IDE/Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Lua bytecode
+*.luac
+
+# Node modules (if using npm for tooling)
+node_modules/
+
+# Save files (game state)
+*.sav
+
+/Docs
